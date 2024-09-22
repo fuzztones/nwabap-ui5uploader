@@ -56,6 +56,48 @@ function UploadCommand() {
                 Object.assign(options, JSON.parse(fs.readFileSync('.nwabaprc', 'utf8')));
             }
 
+            if ((options?.conn_user.startsWith("env:")) || (options?.conn_password.startsWith("env:"))) {
+                console.log("Found reference to .env file, trying to set conn_user & conn_password from .env");
+
+                if (options?.conn_user.startsWith("env:")) {
+                    options.conn_user = '';
+                }
+
+                if (options?.conn_password.startsWith("env:")) {
+                    options.conn_password = '';
+                }
+
+                if (fs.existsSync('.env')) {
+                    const aEnvFileRows = [];
+                    let oEnv = {};
+
+                    Object.assign(aEnvFileRows, fs.readFileSync('.env', 'utf8').split("\n"));
+
+                    if (aEnvFileRows) {
+                        oEnv = aEnvFileRows.reduce((accumulator, row)=>{
+                            let [key, value] = row.split("=");
+                            if (key && value) {
+                                accumulator[key.trim()] = value.trim();
+                            }
+                            return accumulator;
+                        }, {});
+                    }
+
+                    if (oEnv?.USERNAME) {
+                        options.conn_user = oEnv.USERNAME;
+                        console.log("conn_user was set from .env file");
+                    }
+
+                    if (oEnv?.PASSWORD) {
+                        options.conn_password = oEnv.PASSWORD;
+                        console.log("conn_password was set from .env file");
+                    }
+                } else {
+                    console.log(colors.red("Unable to find .env file"));
+                    process.exit(1);
+                }
+            }
+           
             Object.keys(options).map(key => {
                 if (_options[key] !== undefined) {
                     options[key] = _options[key];
